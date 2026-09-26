@@ -1,11 +1,23 @@
 from database.database import get_today_timetable
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from models.class_info import ClassInfo
+
+
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def get_now(test_time=None):
+
+    if test_time is not None:
+        return test_time
+
+    return datetime.now(IST)
 
 
 def get_current_class(test_time=None):
 
-    now = test_time if test_time else datetime.now()
+    now = get_now(test_time)
 
     d = now.strftime("%A")
     t = now.strftime("%H:%M")
@@ -26,7 +38,7 @@ def get_current_class(test_time=None):
 
 def get_next_class(test_time=None):
 
-    now = test_time if test_time else datetime.now()
+    now = get_now(test_time)
 
     d = now.strftime("%A")
     t = now.strftime("%H:%M")
@@ -47,7 +59,7 @@ def get_next_class(test_time=None):
 
 def time_until_next_class():
 
-    now = datetime.now()
+    now = get_now()
 
     next_class = get_next_class()
 
@@ -57,12 +69,12 @@ def time_until_next_class():
     next_time = datetime.strptime(
         next_class.start,
         "%H:%M"
-    )
+    ).time()
 
-    next_time = next_time.replace(
-        year=now.year,
-        month=now.month,
-        day=now.day
+    next_time = datetime.combine(
+        now.date(),
+        next_time,
+        tzinfo=IST
     )
 
     return round(
@@ -72,7 +84,7 @@ def time_until_next_class():
 
 def classes_remaining_today():
 
-    now = datetime.now()
+    now = get_now()
 
     d = now.strftime("%A")
     t = now.strftime("%H:%M")
@@ -98,17 +110,17 @@ def should_check_attendance():
     if current is None:
         return None
 
-    now = datetime.now()
+    now = get_now()
 
     start = datetime.strptime(
         current.start,
         "%H:%M"
-    )
+    ).time()
 
-    start = start.replace(
-        year=now.year,
-        month=now.month,
-        day=now.day
+    start = datetime.combine(
+        now.date(),
+        start,
+        tzinfo=IST
     )
 
     if now >= start + timedelta(minutes=5):
@@ -119,7 +131,7 @@ def should_check_attendance():
 
 def run(context):
 
-    now = datetime.now()
+    now = get_now()
 
     context.current_day = now.strftime("%A")
     context.current_time = now.strftime("%H:%M")

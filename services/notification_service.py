@@ -12,6 +12,8 @@ def notify(context, title, message, priority=3, tags="books"):
         subject = context.current_class.subject
         attendance_url = f"{API_URL}/attendance-response"
 
+        print("ATTENDANCE ACTION URL:", attendance_url)
+
         payload = {
             "topic": TOPIC,
             "title": title,

@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 from config import TOPIC, API_URL, COLLEGEOS_TOKEN
 
 
@@ -10,6 +11,18 @@ def notify(context, title, message, priority=3, tags="books"):
             return False
 
         subject = context.current_class.subject
+        start = datetime.strptime(
+            context.current_class.start,
+            "%H:%M"
+        )
+
+        end = datetime.strptime(
+            context.current_class.end,
+            "%H:%M"
+        )
+
+        hours = int((end - start).total_seconds() / 3600)
+
         attendance_url = f"{API_URL}/attendance-response"
 
         print("ATTENDANCE ACTION URL:", attendance_url)
@@ -33,7 +46,7 @@ def notify(context, title, message, priority=3, tags="books"):
                         "Content-Type": "application/json"
                     },
 
-                    "body": f'{{"subject":"{subject}","response":"YES"}}',
+                    "body": f'{{"subject":"{subject}","response":"YES","hours":{hours},"start_time":"{context.current_class.start}","end_time":"{context.current_class.end}"}}',
                     "clear": True
                 },
 
@@ -48,7 +61,7 @@ def notify(context, title, message, priority=3, tags="books"):
                         "Content-Type": "application/json"
                     },
 
-                    "body": f'{{"subject":"{subject}","response":"NO"}}',
+                    "body": f'{{"subject":"{subject}","response":"NO","hours":{hours},"start_time":"{context.current_class.start}","end_time":"{context.current_class.end}"}}',
                     "clear": True
                 }
             ]

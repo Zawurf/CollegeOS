@@ -56,6 +56,9 @@ def create_table():
             subject_id INTEGER NOT NULL,
             status TEXT NOT NULL,
             date TEXT NOT NULL,
+            hours INTEGER NOT NULL DEFAULT 1,
+            start_time TEXT,
+            end_time TEXT,
             FOREIGN KEY(subject_id) REFERENCES subjects(id)
         )
     """)
@@ -66,8 +69,10 @@ def create_table():
             subject_id INTEGER NOT NULL,
             date TEXT NOT NULL,
             notified_at TEXT NOT NULL,
+            start_time TEXT,
+            end_time TEXT,
             FOREIGN KEY(subject_id) REFERENCES subjects(id),
-            UNIQUE(subject_id, date)
+            UNIQUE(subject_id, date, start_time, end_time)
         )
     """)
 
@@ -78,11 +83,12 @@ def create_table():
 
 def add_subject(name, min_attendance):
     conn = connect()
+    cursor = conn.cursor()
 
     try:
-        conn.execute("""
+        cursor.execute("""
             INSERT INTO subjects(name, min_attendance)
-            VALUES(%s, %s)
+            VALUES (%s, %s)
         """, (name, min_attendance))
 
         conn.commit()
@@ -92,6 +98,7 @@ def add_subject(name, min_attendance):
         print("Subject already exists")
 
     finally:
+        cursor.close()
         conn.close()
 
 
@@ -126,6 +133,7 @@ def add_timetable(subject_name, day, start, end):
         cursor.close()
         conn.close()
 
+
 def add_official_data(sub_id, total_cls, atd_cls, last_upd):
     conn = connect()
     cursor = conn.cursor()
@@ -145,49 +153,49 @@ def add_official_data(sub_id, total_cls, atd_cls, last_upd):
     cursor.close()
     conn.close()
 
-def add_daily_logs(sub_id, date, status):
+
+def add_daily_logs(
+    sub_id,
+    date,
+    status,
+    hours=1,
+    start_time=None,
+    end_time=None
+):
     conn = connect()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO daily_logs(
-            subject_id,
-            date,
-            status
-        )
-        VALUES (%s, %s, %s)
-    """, (sub_id, date, status))
-
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-
-def add_subject(name, min_attendance):
-    conn = connect()
-    cursor = conn.cursor()
 
     try:
-        cursor.execute("""
-            INSERT INTO subjects(name, min_attendance)
-            VALUES (%s, %s)
-        """, (name, min_attendance))
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO daily_logs(
+                    subject_id,
+                    status,
+                    date,
+                    hours,
+                    start_time,
+                    end_time
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    sub_id,
+                    status,
+                    date,
+                    hours,
+                    start_time,
+                    end_time
+                )
+            )
 
         conn.commit()
 
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        print("Subject already exists")
-
     finally:
-        cursor.close()
         conn.close()
 
 
 def get_subject_id(subject_name):
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -209,7 +217,6 @@ def get_subject_id(subject_name):
 
 def get_official_data(sub_id):
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -231,11 +238,10 @@ def get_official_data(sub_id):
 
 def get_daily_logs(sub_id):
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT status
+        SELECT status, hours
         FROM daily_logs
         WHERE subject_id = %s
     """, (sub_id,))
@@ -250,7 +256,6 @@ def get_daily_logs(sub_id):
 
 def get_min_attendance(sub_id):
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -274,7 +279,6 @@ def get_today_timetable(day):
     day = day.capitalize()
 
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -296,17 +300,23 @@ def get_today_timetable(day):
     return rows
 
 
-def is_already_logged(sub_id, date):
+def is_already_logged(sub_id, date, start_time, end_time):
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT *
+        SELECT 1
         FROM daily_logs
         WHERE subject_id = %s
         AND date = %s
-    """, (sub_id, date))
+        AND start_time = %s
+        AND end_time = %s
+    """, (
+        sub_id,
+        date,
+        start_time,
+        end_time
+    ))
 
     row = cursor.fetchone()
 
@@ -316,9 +326,8 @@ def is_already_logged(sub_id, date):
     return row is not None
 
 
-def was_notified(sub_id, date):
+def was_notified(sub_id, date, start_time, end_time):
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -326,7 +335,14 @@ def was_notified(sub_id, date):
         FROM notification_logs
         WHERE subject_id = %s
         AND date = %s
-    """, (sub_id, date))
+        AND start_time = %s
+        AND end_time = %s
+    """, (
+        sub_id,
+        date,
+        start_time,
+        end_time
+    ))
 
     row = cursor.fetchone()
 
@@ -336,7 +352,7 @@ def was_notified(sub_id, date):
     return row is not None
 
 
-def mark_notified(sub_id, date):
+def mark_notified(sub_id, date, start_time, end_time):
     conn = connect()
     cursor = conn.cursor()
 
@@ -347,10 +363,18 @@ def mark_notified(sub_id, date):
             INSERT INTO notification_logs(
                 subject_id,
                 date,
-                notified_at
+                notified_at,
+                start_time,
+                end_time
             )
-            VALUES (%s, %s, %s)
-        """, (sub_id, date, notified_at))
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            sub_id,
+            date,
+            notified_at,
+            start_time,
+            end_time
+        ))
 
         conn.commit()
 

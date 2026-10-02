@@ -15,20 +15,28 @@ def get_notification_subject_id(context):
 
 
 def already_notified(context):
-
     sub_id = get_notification_subject_id(context)
 
     if sub_id is None:
         return False
 
-    return was_notified(sub_id, today())
+    return was_notified(
+        sub_id,
+        today(),
+        context.current_class.start,
+        context.current_class.end
+    )
 
 
 def mark_as_notified(context):
-
     sub_id = get_notification_subject_id(context)
 
     if sub_id is None:
         return
 
-    mark_notified(sub_id, today())
+    mark_notified(
+        sub_id,
+        today(),
+        context.current_class.start,
+        context.current_class.end
+    )

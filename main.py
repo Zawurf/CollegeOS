@@ -20,6 +20,9 @@ class LocationInput(BaseModel):
 class AttendanceResponse(BaseModel):
     subject: str
     response: str
+    hours: int = 1
+    start_time: str
+    end_time: str
 
 @app.post("/location")
 def run_system(location: LocationInput):
@@ -57,7 +60,12 @@ def attendance_response(
 
         today = datetime.now().strftime("%Y-%m-%d")
 
-        if is_already_logged(sub_id, today):
+        if is_already_logged(
+                sub_id,
+                today,
+                data.start_time,
+                data.end_time
+        ):
             return {
                 "status": "already_logged",
                 "message": f"Attendance already logged for {data.subject}"
@@ -66,7 +74,10 @@ def attendance_response(
         add_daily_logs(
             sub_id,
             today,
-            "present"
+            "present",
+            data.hours,
+            data.start_time,
+            data.end_time
         )
 
         return {

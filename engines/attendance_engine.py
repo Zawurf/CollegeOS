@@ -24,12 +24,13 @@ def calculate_attendance(sub_id):
     for log in logs:
 
         status = log[0]
+        hours = log[1]
 
         if status != "cancelled":
-            total_logs += 1
+            total_logs += hours
 
         if status in ["proxy", "present", "free"]:
-            attended_logs += 1
+            attended_logs += hours
 
     final_total_class = official_total + total_logs
     final_attended_class = official_attended + attended_logs
